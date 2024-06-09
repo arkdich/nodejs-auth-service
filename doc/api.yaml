@@ -68,6 +68,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    409:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
   securitySchemes:
     bearerAuth:
@@ -149,8 +155,8 @@ paths:
                   description: Email
                   example: qwerty@qwrt.com
       responses:
-        200:
-          description: Successful login.
+        201:
+          description: User successfully registerd
           content:
             application/json:
               schema:
@@ -158,11 +164,9 @@ paths:
                 properties:
                   accessToken:
                     type: string
-                  refreshToken:
-                    type: string
                 description: JWT Tokens
-        401:
-          description: Incorrect login or password
+        409:
+          description: User already exists
 
   /auth/password/change:
     post:

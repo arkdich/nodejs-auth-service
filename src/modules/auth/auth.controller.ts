@@ -48,8 +48,18 @@ export class AuthController {
 
   @PublicRoute()
   @Post('register')
-  async register(@Body() data: CreateUserDto) {
-    await this.authService.regisrer(data);
+  async register(
+    @Body() data: CreateUserDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken } = await this.authService.regisrer(data);
+
+    res.cookie('REFRESH_TOKEN', refreshToken, {
+      maxAge: ms(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN),
+      httpOnly: true,
+    });
+
+    return { accessToken };
   }
 
   @PublicRoute()

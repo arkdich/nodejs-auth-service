@@ -43,6 +43,74 @@ export class AuthService {
     AuthService.instance = this;
   }
 
+  async validateUser({
+    id,
+    login,
+    password,
+  }: Partial<Pick<UserEntity, 'id' | 'login' | 'password'>>) {
+    const user = await this.userRepository.findOneBy([{ id }, { login }]);
+
+    if (!user) {
+      throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
+    }
+
+    const isValid = await compare(password, user.password);
+
+    if (!isValid) {
+      throw new HttpException(
+        'Текущий пароль указан неверно',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return {
+      user,
+      isValid,
+    };
+  }
+
+  async generateTokens({
+    id,
+    login,
+    email,
+  }: Partial<Pick<UserEntity, 'id' | 'login' | 'email'>>) {
+    const tokenPayload = {
+      sub: id,
+      login,
+      email,
+    };
+
+    const accessToken = await this.jwtService.signAsync(tokenPayload, {
+      secret: process.env.JWT_SECRET_KEY,
+      expiresIn: '30m',
+    });
+
+    const refreshToken = await this.jwtService.signAsync(tokenPayload, {
+      secret: process.env.JWT_SECRET_REFRESH_KEY,
+      expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  async validateToken(type: 'access' | 'refresh' | 'reset', token: string) {
+    const JWT_SECRETS = {
+      access: process.env.JWT_SECRET_KEY,
+      refresh: process.env.JWT_SECRET_REFRESH_KEY,
+      reset: process.env.JWT_SECRET_RESET_KEY,
+    };
+
+    try {
+      const payload: UserJwt = await this.jwtService.verifyAsync(token, {
+        secret: JWT_SECRETS[type],
+      });
+
+      return payload;
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+
   async login({ login, password }: LoginDto) {
     const { user } = await this.validateUser({ login, password });
 
@@ -84,8 +152,6 @@ export class AuthService {
 
       return tokens;
     } catch (err) {
-      console.log(err);
-
       throw new HttpException(
         `Пользователь с данными ${data.email} или ${data.login} уже существует`,
         HttpStatus.CONFLICT,
@@ -154,73 +220,5 @@ export class AuthService {
     }
 
     await this.userService.updatePassword(sub, data.password);
-  }
-
-  async validateUser({
-    id,
-    login,
-    password,
-  }: Partial<Pick<UserEntity, 'id' | 'login' | 'password'>>) {
-    const user = await this.userRepository.findOneBy([{ id }, { login }]);
-
-    if (!user) {
-      throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
-    }
-
-    const isValid = await compare(password, user.password);
-
-    if (!isValid) {
-      throw new HttpException(
-        'Текущий пароль указан неверно',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    return {
-      user,
-      isValid,
-    };
-  }
-
-  async generateTokens({
-    id,
-    login,
-    email,
-  }: Partial<Pick<UserEntity, 'id' | 'login' | 'email'>>) {
-    const tokenPayload = {
-      sub: id,
-      login,
-      email,
-    };
-
-    const accessToken = await this.jwtService.signAsync(tokenPayload, {
-      secret: process.env.JWT_SECRET_KEY,
-      expiresIn: '30m',
-    });
-
-    const refreshToken = await this.jwtService.signAsync(tokenPayload, {
-      secret: process.env.JWT_SECRET_REFRESH_KEY,
-      expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
-    });
-
-    return { accessToken, refreshToken };
-  }
-
-  async validateToken(type: 'access' | 'refresh' | 'reset', token: string) {
-    const JWT_SECRETS = {
-      access: process.env.JWT_SECRET_KEY,
-      refresh: process.env.JWT_SECRET_REFRESH_KEY,
-      reset: process.env.JWT_SECRET_RESET_KEY,
-    };
-
-    try {
-      const payload: UserJwt = await this.jwtService.verifyAsync(token, {
-        secret: JWT_SECRETS[type],
-      });
-
-      return payload;
-    } catch {
-      throw new UnauthorizedException();
-    }
   }
 }
