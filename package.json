@@ -17,7 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "build:image": "docker build -t arkdich/nodejs-auth-service .",
+    "start:container": "docker run -p 4000:4000 --env-file .env.local --name nodejs-auth-service-container arkdich/nodejs-auth-service"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
